@@ -18,7 +18,7 @@ def write_to_disk(campaign):
     Create a Flask app on disk with the data provided by the server
     '''
     # will hold the contents of campaigns/<id>/app/routes.txt
-    routes_content = 'from app import app\nfrom flask import request, jsonify, render_template, url_for, redirect, Markup\nimport os\nimport sys\nfrom app.functions import report_action, report_form'
+    routes_content = 'from app import app\nfrom flask import request, jsonify, render_template, url_for, redirect, Markup\nimport os\nimport sys\nfrom app.functions import report_action, report_form\nimport ipaddress\nfrom ipaddress import ip_network, ip_address'
 
     # create campaigns folder if it doesnt exist
     if not os.path.isdir(os.path.join(app_dir, 'campaigns')):
@@ -39,6 +39,7 @@ def write_to_disk(campaign):
     if not os.path.isdir(os.path.join(campaign_dir, 'app', 'static')):
         os.mkdir(os.path.join(campaign_dir, 'app', 'static'))
     copyfile(os.path.join(app_dir, 'templates', 'pixel.png'), os.path.join(campaign_dir, 'app', 'static', 'logo.png'))
+#    copyfile(os.path.join(app_dir, 'templates', 'blocklist.txt'), os.path.join(campaign_dir, 'blocklist.txt'))
 
     # copy all files from the upload dir to the static folder
     if os.path.isdir(Config.UPLOAD_FOLDER):
@@ -106,11 +107,34 @@ def write_to_disk(campaign):
     else:
         routes_content +=  '\n    return redirect(url_for(\'url_1\'))'
 
+    # read blocklist if it exists
+    blocklist = os.path.join(Config.UPLOAD_FOLDER, 'blacklist.txt')
+    if os.path.isfile(blocklist):
+        routes_content += f'\n\nblocklist = []'
+        routes_content += f'\nwith open(\'app/static/blacklist.txt\', \'r\') as f:'
+        routes_content += f'\n    for line in f:'
+        routes_content += f'\n        line = line.strip()'
+        routes_content += f'\n        try:'
+        routes_content += f'\n            blocklist.append(ip_network(line))'
+        routes_content += f'\n        except ValueError:'
+        routes_content += f'\n            print(f"Ignoring invalid subnet")'
+
+        # check if an IP address is in the blocklist
+        routes_content += '\n\ndef is_ip_blocked(ip):'
+        routes_content += '\n    for blocked in blocklist:'
+        routes_content += '\n         if ip_address(ip) in blocked:'
+        routes_content += '\n             return True'
+        routes_content += '\n    return False'
+
     # create templates in campaigns/<id>/templates and routing
     for idx, page in enumerate(campaign['pages']):
         routes_content += f'\n\n\n@app.route(url_{idx + 1}, methods=[\'GET\', \'POST\'])'
         routes_content += f'\ndef url_{idx + 1}():'
-        routes_content += '\n    id = request.args.get(\'id\')'
+        # if in blocklist redirect
+        if os.path.isfile(blocklist):
+            routes_content += '\n    if is_ip_blocked(request.remote_addr):'
+            routes_content += '\n        return redirect(\'{campaign["safety_url"]}\')'
+            routes_content += '\n    id = request.args.get(\'id\')'
 
         # if first route, report clicks
         if idx == 0:
