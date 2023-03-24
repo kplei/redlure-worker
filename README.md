@@ -1,3 +1,5 @@
+Fork of the redlure-worker with with added IP blacklisting functionality.
+
 # redlure-worker
 The redlure-worker is a small API that hosts phishing sites and sends data back to your redlure-console. redlure is designed to have multiple redlure-workers working in conjunction with a single redlure-console.
 
