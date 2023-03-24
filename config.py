@@ -5,4 +5,4 @@ class Config(object):
     WORKER_PORT = 4445
     SERVER_IP = '' # IP or domain name of your redlure-console
     SERVER_PORT = 5000
-    UPLOAD_FOLDER = '/tmp/redlure/uploads'
+    UPLOAD_FOLDER = './uploads'
